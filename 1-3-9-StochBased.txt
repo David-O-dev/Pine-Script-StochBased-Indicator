@@ -1,0 +1,594 @@
+// This Pine Script® code is subject to the terms of the Mozilla Public License 2.0 at https://mozilla.org/MPL/2.0/
+// © Gradation0
+
+//@version=6
+indicator("1/3/9 + Stoch", overlay = true, precision = 5, format = format.price)
+
+//TimeSetting
+Min1TimeFrame = input.string(defval = "1", title = "Time Frame 1", group = "Time Frame")
+Min2TimeFrame = input.string(defval = "2", title = "Time Frame 2", group = "Time Frame")
+Min3TimeFrame = input.string(defval = "3", title = "Time Frame 3", group = "Time Frame")
+Min9TimeFrame = input.string(defval = "9", title = "Time Frame 9", group = "Time Frame")
+
+
+//hour
+HourCandleOpen = request.security(syminfo.tickerid, timeframe = "60", expression = open)
+AboveHour = false
+BelowHour = false
+if close > HourCandleOpen
+    AboveHour := true
+    BelowHour := false
+
+if close < HourCandleOpen
+    AboveHour := false
+    BelowHour := true
+
+
+//RSI
+//User Inputs
+UseRSI = input.bool(defval = true, title = "Use RSI", group = "RSI", tooltip = "RSI 55이상/45이하이고 정배열일 시 롱/숏 표시")
+RSITimeFrame1 = input.string(defval = "3", title = "RSI Time Frame", group = "RSI")
+
+//RSI Length
+rsi1Length = input.int(defval = 7, title = "RSI 1 Line", group = "RSI")
+rsi2Length = input.int(defval = 9, title = "RSI 2 Line", group = "RSI")
+rsi3Length = input.int(defval = 11, title = "RSI 3 Line", group = "RSI")
+
+//RSI Time Frame 1
+RSI1 = request.security(syminfo.tickerid, timeframe = RSITimeFrame1, expression = ta.rsi(close, rsi1Length))
+RSI2 = request.security(syminfo.tickerid, timeframe = RSITimeFrame1, expression = ta.rsi(close, rsi2Length))
+RSI3 = request.security(syminfo.tickerid, timeframe = RSITimeFrame1, expression = ta.rsi(close, rsi3Length))
+
+//Below 45 or Above 55 and In Order (1-3)
+bool To3RSILong = false
+bool To3RSIShort = false
+// if UseRSI
+//     if RSI1 > 55 and RSI2 > 55 and RSI3 > 55
+//         if RSI1 > RSI2 and RSI2 > RSI3
+//             To3RSILong := true
+//             To3RSIShort := false
+
+
+//     else if RSI1 < 45 and RSI2 < 45 and RSI3 < 45
+//         if RSI1 < RSI2 and RSI2 < RSI3
+//             To3RSILong := false
+//             To3RSIShort := true
+
+//     else
+//         To3RSILong := false
+//         To3RSIShort := false
+
+if UseRSI
+    if RSI1 > 55
+        To3RSILong := true
+        To3RSIShort := false
+
+    else if RSI1 < 45
+        To3RSILong := false
+        To3RSIShort := true
+
+    else
+        To3RSILong := false
+        To3RSIShort := false
+
+
+
+//RSI Time Frame 2
+RSITimeFrame2 = input.string(defval = "9", title = "RSI Time Frame", group = "RSI")
+
+RSI11 = request.security(syminfo.tickerid, timeframe = RSITimeFrame2, expression = ta.rsi(close, rsi1Length))
+RSI12 = request.security(syminfo.tickerid, timeframe = RSITimeFrame2, expression = ta.rsi(close, rsi2Length))
+RSI13 = request.security(syminfo.tickerid, timeframe = RSITimeFrame2, expression = ta.rsi(close, rsi3Length))
+
+//Below 45 or Above 55 and In Order (1-3)
+bool To13RSILong = false
+bool To13RSIShort = false
+if UseRSI
+    if RSI11 > 55
+        To13RSILong := true
+        To13RSIShort := false
+
+    else if RSI11 < 45
+        To13RSILong := false
+        To13RSIShort := true
+
+    else
+        To13RSILong := false
+        To13RSIShort := false
+
+
+
+//Ichimoku
+//User Inputs
+PlotIchimoku = input.bool(defval = true, title = "Plot Ichimoku", group = "Ichimoku", tooltip = "Show Ichimoku")
+
+//Calculations
+conversionPeriods = input.int(9, minval=1, title="Conversion Line Length", group = "Ichimoku")
+basePeriods = input.int(26, minval=1, title="Base Line Length", group = "Ichimoku")
+laggingSpan2Periods = input.int(52, minval=1, title="Leading Span B Length", group = "Ichimoku")
+displacement = input.int(26, minval=1, title="Lagging Span", group = "Ichimoku")
+donchian(len) => math.avg(ta.lowest(len), ta.highest(len))
+conversionLine = donchian(conversionPeriods)
+baseLine = donchian(basePeriods)
+leadLine1 = math.avg(conversionLine, baseLine)
+leadLine2 = donchian(laggingSpan2Periods)
+
+Conversion3 = request.security(syminfo.tickerid, timeframe = Min3TimeFrame, expression = conversionLine)
+Conversion9 = request.security(syminfo.tickerid, timeframe = Min9TimeFrame, expression = conversionLine)
+
+
+//Plotting
+plot(PlotIchimoku ? conversionLine : na, color=color.aqua, title="Conversion Line", linewidth = 2)
+// plot(PlotIchimoku ? baseLine : na, color=#B71C1C, title="Base Line")
+plot(PlotIchimoku ? close : na, offset = -displacement + 1, color=color.rgb(51, 41, 190), title="Lagging Span")
+p1 = plot(PlotIchimoku ? leadLine1 : na, offset = displacement - 1, color=color.rgb(132, 184, 134), title="Leading Span A")
+p2 = plot(PlotIchimoku ? leadLine2 : na, offset = displacement - 1, color=#EF9A9A, title="Leading Span B")
+plot(leadLine1 > leadLine2 ? (PlotIchimoku ? leadLine1 : na) : leadLine2, offset = displacement - 1, title = "Kumo Cloud Upper Line", display = display.none) 
+plot(leadLine1 < leadLine2 ? (PlotIchimoku ? leadLine1 : na) : leadLine2, offset = displacement - 1, title = "Kumo Cloud Lower Line", display = display.none) 
+fill(p1, p2, color = leadLine1 > leadLine2 ? color.rgb(67, 160, 72, 70) : color.rgb(244, 67, 54, 70))
+
+
+
+//Conversion Line
+UseIchimoku = input.bool(defval = true, title = "Use Ichimoku", group = "Ichimoku")
+
+conversionLine9 = request.security(syminfo.tickerid, "9", conversionLine)
+LeadLine19 = request.security(syminfo.tickerid, "9", leadLine1)
+
+
+bool ConversionLineFacingUp = false
+bool ConversionLineFacingDown = false
+if UseIchimoku
+    if conversionLine9[1] < conversionLine9[0]
+        ConversionLineFacingUp := true
+        ConversionLineFacingDown := false
+
+    else if conversionLine9[1] > conversionLine9[0]
+        ConversionLineFacingUp := false
+        ConversionLineFacingDown := true
+
+    else
+        ConversionLineFacingUp := false
+        ConversionLineFacingDown := false
+
+
+
+bool Leadline1Up = false
+bool Leadline1Down = false
+
+if LeadLine19[0] > LeadLine19[1]
+    Leadline1Up := true
+    Leadline1Down := false
+
+else if LeadLine19[0] < LeadLine19[1]
+    Leadline1Up := false
+    Leadline1Down := true
+
+else
+    Leadline1Up := false
+    Leadline1Down := false
+
+
+
+// MACD
+fast_length = input(title = "Fast Length", defval = 12, group = "MACD")
+slow_length = input(title = "Slow Length", defval = 26, group = "MACD")
+src1 = input(title = "Source", defval = close, group = "MACD")
+signal_length = input.int(title = "Signal Smoothing",  minval = 1, maxval = 50, defval = 9, display = display.data_window, group = "MACD")
+sma_source = input.string(title = "Oscillator MA Type",  defval = "EMA", options = ["SMA", "EMA"], display = display.data_window, group = "MACD")
+sma_signal = input.string(title = "Signal Line MA Type", defval = "EMA", options = ["SMA", "EMA"], display = display.data_window, group = "MACD")
+fast_ma = sma_source == "SMA" ? ta.sma(src1, fast_length) : ta.ema(src1, fast_length)
+slow_ma = sma_source == "SMA" ? ta.sma(src1, slow_length) : ta.ema(src1, slow_length)
+macd = fast_ma - slow_ma
+signal = sma_signal == "SMA" ? ta.sma(macd, signal_length) : ta.ema(macd, signal_length)
+hist = macd - signal
+alertcondition(hist[1] >= 0 and hist < 0, title = 'Rising to falling', message = 'The MACD histogram switched from a rising to falling state')
+alertcondition(hist[1] <= 0 and hist > 0, title = 'Falling to rising', message = 'The MACD histogram switched from a falling to rising state')
+
+Min3Macd = request.security(syminfo.tickerid, timeframe = Min3TimeFrame, expression = macd)
+//Detect MACD Cross
+UseMACD = input.bool(true, "UseMACD", group = "MACD")
+bool macdLong = false
+bool macdShort = false
+if UseMACD
+    if Min3Macd[0] > 0
+        macdLong := true
+        macdShort := false
+
+    else if Min3Macd[0] < 0
+        macdLong := false
+        macdShort := true
+
+    else
+        macdLong := false
+        macdShort := false
+
+
+
+
+
+
+
+
+
+//Stoch
+// Input parameters
+a = input.int(7, "Percent K Length", minval=1)
+b = input.int(3, "Percent D Length", minval=1)
+c = input.int(3, "EMA Signal Length", minval=1)
+smooth_period = input.int(3, "Smoothing Period", minval=1)
+ob = input.float(50, "Overbought", minval=-100, maxval=100)
+os = input.float(-50, "Oversold", minval=-100, maxval=100)
+
+// Range Calculation
+ll = ta.lowest(low, a)
+hh = ta.highest(high, a)
+diff = hh - ll
+rdiff = close - (hh+ll)/2
+
+avgrel = ta.ema(rdiff, b)
+avgdiff = ta.ema(diff, b)
+
+// SMI calculations
+SMI = avgdiff != 0 ? (avgrel/(avgdiff/2)*100) : 0.0
+
+// Apply smoothing to SMI
+SMI_smoothed = ta.sma(SMI, smooth_period)
+
+SMIsignal = ta.ema(SMI_smoothed, b)
+emasignal = ta.ema(SMI_smoothed, c)
+
+LinePositive25 = 25
+LineNegative25 = -25
+
+Min3SMI_smoothed = request.security(syminfo.tickerid, timeframe = Min3TimeFrame, expression = SMI_smoothed)
+Min9SMI_smoothed = request.security(syminfo.tickerid, timeframe = Min9TimeFrame, expression = SMI_smoothed)
+
+//Stoch 롱 숏
+bool Min3StochLong = false
+bool Min3StochShort = false
+if Min3SMI_smoothed > LinePositive25
+    Min3StochLong := true
+    Min3StochShort := false
+
+else if Min3SMI_smoothed < LineNegative25
+    Min3StochLong := false
+    Min3StochShort := true
+
+else
+    Min3StochLong := false
+    Min3StochShort := false
+
+
+bool Min9StochLong = false
+bool Min9StochShort = false
+if Min9SMI_smoothed > LinePositive25
+    Min9StochLong := true
+    Min9StochShort := false
+
+else if Min9SMI_smoothed < LineNegative25
+    Min9StochLong := false
+    Min9StochShort := true
+
+else
+    Min9StochLong := false
+    Min9StochShort := false
+
+
+
+
+
+
+//EMA
+//User Inputs
+UseEMA1to10 = input.bool(defval = true, title = "Use EMA 1-10", group = "EMA", tooltip = "EMA 1-10 크로스(설정된 값)가 됐을 시 롱/숏 표시")
+PlotEMA1to10 = input.bool(defval = true, title = "Plot EMA 1-10 (Time Doesn't Matter)", group = "EMA", tooltip = "Show EMA 1-10 On All Time Frame")
+
+//EMA Time Frame 1 Length Inputs
+EMA1Length = input.int(defval = 3, title = "EMA 1 Length", group = "EMA Set 1")
+EMA2Length = input.int(defval = 5, title = "EMA 2 Length", group = "EMA Set 1")
+EMA3Length = input.int(defval = 7, title = "EMA 3 Length", group = "EMA Set 1")
+EMA4Length = input.int(defval = 9, title = "EMA 4 Length", group = "EMA Set 1")
+EMA5Length = input.int(defval = 12, title = "EMA 5 Length", group = "EMA Set 1")
+EMA6Length = input.int(defval = 20, title = "EMA 6 Length", group = "EMA Set 1")
+EMA7Length = input.int(defval = 30, title = "EMA 7 Length", group = "EMA Set 1")
+EMA8Length = input.int(defval = 60, title = "EMA 8 Length", group = "EMA Set 1")
+EMA9Length = input.int(defval = 100, title = "EMA 9 Length", group = "EMA Set 1")
+EMA10Length = input.int(defval = 200, title = "EMA 10 Length", group = "EMA Set 1")
+
+//EMA Assigning Values Time Frame 1
+EMA1 = request.security(syminfo.tickerid, timeframe = Min3TimeFrame, expression = ta.ema(close, EMA1Length))
+EMA2 = request.security(syminfo.tickerid, timeframe = Min3TimeFrame, expression = ta.ema(close, EMA2Length))
+EMA3 = request.security(syminfo.tickerid, timeframe = Min3TimeFrame, expression = ta.ema(close, EMA3Length))
+EMA4 = request.security(syminfo.tickerid, timeframe = Min3TimeFrame, expression = ta.ema(close, EMA4Length))
+EMA5 = request.security(syminfo.tickerid, timeframe = Min3TimeFrame, expression = ta.ema(close, EMA5Length))
+EMA6 = request.security(syminfo.tickerid, timeframe = Min3TimeFrame, expression = ta.ema(close, EMA6Length))
+SMA6 = request.security(syminfo.tickerid, timeframe = Min3TimeFrame, expression = ta.sma(close, EMA6Length))
+EMA7 = request.security(syminfo.tickerid, timeframe = Min3TimeFrame, expression = ta.ema(close, EMA7Length))
+EMA8 = request.security(syminfo.tickerid, timeframe = Min3TimeFrame, expression = ta.ema(close, EMA8Length))
+EMA9 = request.security(syminfo.tickerid, timeframe = Min3TimeFrame, expression = ta.ema(close, EMA9Length))
+EMA10 = request.security(syminfo.tickerid, timeframe = Min3TimeFrame, expression = ta.ema(close, EMA10Length))
+
+//Cross Detect (EMA 1-10)
+var bool EMACrossUp3 = false
+var EMACrossDown3 = false
+if UseEMA1to10
+    if (EMA2[0] > EMA6[0] and EMA2[1] < EMA6[1]) or (EMA3[0] > EMA6[0] and EMA3[1] < EMA6[1]) or (EMA2[0] > EMA8[0] and EMA2[1] < EMA8[1])
+        EMACrossUp3 := true
+        EMACrossDown3 := false
+
+    else if (EMA2[0] < EMA6[0] and EMA2[1] > EMA6[1]) or (EMA3[0] < EMA6[0] and EMA3[1] > EMA6[1]) or (EMA2[0] < EMA8[0] and EMA2[1] > EMA8[1])
+        EMACrossUp3 := false
+        EMACrossDown3 := true
+
+    else if (EMA2[0] > SMA6[0] and EMA2[1] < SMA6[1]) or (EMA3[0] > SMA6[0] and EMA3[1] < SMA6[1])
+        EMACrossUp3 := true
+        EMACrossDown3 := false
+
+    else if (EMA2[0] < SMA6[0] and EMA2[1] > SMA6[1]) or (EMA3[0] < SMA6[0] and EMA3[1] > SMA6[1])
+        EMACrossUp3 := false
+        EMACrossDown3 := true
+
+    else
+        EMACrossUp3 := false
+        EMACrossDown3 := false
+
+
+// (EMA1[0] > EMA6[0] and EMA1[1] < EMA6[1]) or (EMA1[0] < EMA6[0] and EMA1[1] > EMA6[1]) or (EMA1[0] > SMA6[0] and EMA1[1] < SMA6[1]) or (EMA1[0] < SMA6[0] and EMA1[1] > SMA6[1]) or 
+//  or (EMA4[0] > EMA6[0] and EMA4[1] < EMA6[1]) or (EMA4[0] < EMA6[0] and EMA4[1] > EMA6[1]) or (EMA4[0] > SMA6[0] and EMA4[1] < SMA6[1]) or (EMA4[0] < SMA6[0] and EMA4[1] > SMA6[1])
+
+
+
+//EMA Assigning Values Time Frame 2
+EMA11 = request.security(syminfo.tickerid, timeframe = Min9TimeFrame, expression = ta.ema(close, EMA1Length))
+EMA12 = request.security(syminfo.tickerid, timeframe = Min9TimeFrame, expression = ta.ema(close, EMA2Length))
+EMA13 = request.security(syminfo.tickerid, timeframe = Min9TimeFrame, expression = ta.ema(close, EMA3Length))
+EMA14 = request.security(syminfo.tickerid, timeframe = Min9TimeFrame, expression = ta.ema(close, EMA4Length))
+EMA15 = request.security(syminfo.tickerid, timeframe = Min9TimeFrame, expression = ta.ema(close, EMA5Length))
+EMA16 = request.security(syminfo.tickerid, timeframe = Min9TimeFrame, expression = ta.ema(close, EMA6Length))
+SMA16 = request.security(syminfo.tickerid, timeframe = Min9TimeFrame, expression = ta.sma(close, EMA6Length))
+EMA17 = request.security(syminfo.tickerid, timeframe = Min9TimeFrame, expression = ta.ema(close, EMA7Length))
+EMA18 = request.security(syminfo.tickerid, timeframe = Min9TimeFrame, expression = ta.ema(close, EMA8Length))
+EMA19 = request.security(syminfo.tickerid, timeframe = Min9TimeFrame, expression = ta.ema(close, EMA9Length))
+EMA20 = request.security(syminfo.tickerid, timeframe = Min9TimeFrame, expression = ta.ema(close, EMA10Length))
+
+//Cross Detect (EMA 1-10)
+var bool EMACrossUp9 = false
+var EMACrossDown9 = false
+if UseEMA1to10
+    if (EMA12[0] > EMA16[0] and EMA12[1] < EMA16[1]) or (EMA13[0] > EMA16[0] and EMA13[1] < EMA16[1])
+        EMACrossUp9 := true
+        EMACrossDown9 := false
+
+    else if (EMA12[0] < EMA16[0] and EMA12[1] > EMA16[1]) or (EMA13[0] < EMA16[0] and EMA13[1] > EMA16[1])
+        EMACrossUp9 := false
+        EMACrossDown9 := true
+
+    else if (EMA12[0] > SMA16[0] and EMA12[1] < SMA16[1]) or (EMA13[0] > SMA16[0] and EMA13[1] < SMA16[1])
+        EMACrossUp9 := true
+        EMACrossDown9 := false
+
+    else if (EMA12[0] < SMA16[0] and EMA12[1] > SMA16[1]) or (EMA13[0] < SMA16[0] and EMA13[1] > SMA16[1])
+        EMACrossUp9 := false
+        EMACrossDown9 := true
+
+    else
+        EMACrossUp9 := false
+        EMACrossDown9 := false
+
+// (EMA11[0] > EMA16[0] and EMA11[1] < EMA16[1]) or (EMA11[0] < EMA16[0] and EMA11[1] > EMA16[1]) or (EMA11[0] > SMA16[0] and EMA11[1] < SMA16[1]) or (EMA11[0] < SMA16[0] and EMA11[1] > SMA16[1]) or 
+
+//  or (EMA14[0] > EMA16[0] and EMA14[1] < EMA16[1]) or (EMA14[0] < EMA16[0] and EMA14[1] > EMA16[1]) or (EMA14[0] > SMA16[0] and EMA14[1] < SMA16[1]) or (EMA14[0] < SMA16[0] and EMA14[1] > SMA16[1])
+
+
+// //EMA Assigning Values Time Frame 3
+// EMA21 = request.security(syminfo.tickerid, timeframe = Min1TimeFrame, expression = ta.ema(close, EMA1Length))
+EMA22 = request.security(syminfo.tickerid, timeframe = Min1TimeFrame, expression = ta.ema(close, EMA2Length))
+// EMA23 = request.security(syminfo.tickerid, timeframe = Min1TimeFrame, expression = ta.ema(close, EMA3Length))
+// EMA24 = request.security(syminfo.tickerid, timeframe = Min1TimeFrame, expression = ta.ema(close, EMA4Length))
+// EMA25 = request.security(syminfo.tickerid, timeframe = Min1TimeFrame, expression = ta.ema(close, EMA5Length))
+// SMA26 = request.security(syminfo.tickerid, timeframe = Min1TimeFrame, expression = ta.sma(close, EMA6Length))
+// EMA26 = request.security(syminfo.tickerid, timeframe = Min1TimeFrame, expression = ta.ema(close, EMA6Length))
+// EMA27 = request.security(syminfo.tickerid, timeframe = Min1TimeFrame, expression = ta.ema(close, EMA7Length))
+// EMA28 = request.security(syminfo.tickerid, timeframe = Min1TimeFrame, expression = ta.ema(close, EMA8Length))
+// EMA29 = request.security(syminfo.tickerid, timeframe = Min1TimeFrame, expression = ta.ema(close, EMA9Length))
+EMA30 = request.security(syminfo.tickerid, timeframe = Min1TimeFrame, expression = ta.ema(close, EMA10Length))
+
+//Cross Detect (EMA 1-10)
+var bool EMACrossUp1 = false
+var EMACrossDown1 = false
+if UseEMA1to10
+    if (EMA22[0] > EMA30[0] and EMA22[1] < EMA30[1])
+        EMACrossUp1 := true
+        EMACrossUp1 := false
+
+    else if (EMA22[0] < EMA30[0] and EMA22[1] > EMA30[1])
+        EMACrossUp1 := false
+        EMACrossDown1 := true
+
+    else
+        EMACrossUp1 := false
+        EMACrossDown1 := false
+
+//     if (EMA21[0] > EMA26[0] and EMA21[1] < EMA26[1]) or (EMA22[0] > EMA26[0] and EMA22[1] < EMA26[1]) or (EMA23[0] > EMA26[0] and EMA23[1] < EMA26[1]) or (EMA24[0] > EMA26[0] and EMA24[1] < EMA26[1])
+//         EMACrossUp1 := true
+//         EMACrossDown1 := false
+
+//     else if (EMA21[0] < EMA26[0] and EMA21[1] > EMA26[1]) or (EMA22[0] < EMA26[0] and EMA22[1] > EMA26[1]) or (EMA23[0] < EMA26[0] and EMA23[1] > EMA26[1]) or (EMA24[0] < EMA26[0] and EMA24[1] > EMA26[1])
+//         EMACrossUp1 := false
+//         EMACrossDown1 := true
+
+//     else if (EMA21[0] > SMA26[0] and EMA21[1] < SMA26[1]) or (EMA22[0] > SMA26[0] and EMA22[1] < SMA26[1]) or (EMA23[0] > SMA26[0] and EMA23[1] < SMA26[1]) or (EMA24[0] > SMA26[0] and EMA24[1] < SMA26[1])
+//         EMACrossUp1 := true
+//         EMACrossDown1 := false
+
+//     else if (EMA21[0] < SMA26[0] and EMA21[1] > SMA26[1]) or (EMA22[0] < SMA26[0] and EMA22[1] > SMA26[1]) or (EMA23[0] < SMA26[0] and EMA23[1] > SMA26[1]) or (EMA24[0] < SMA26[0] and EMA24[1] > SMA26[1])
+//         EMACrossUp1 := false
+//         EMACrossDown1 := true
+
+//     else
+//         EMACrossUp1 := false
+//         EMACrossDown1 := false
+
+// // 
+
+
+
+
+//Hull Suite
+//Hull Suite Input
+PlotHullSuite = input.bool(defval = true, title = "Plot Hull Suite", group = "Hull Suite", tooltip = "Show Hull Suite")
+
+//Code For Hull Suite
+src = close
+string modeSwitch = "Hma"
+int length = 55
+float lengthMult = 1.0
+bool useHtf =false
+htf = input.timeframe("240", title="Higher timeframe", group = "Hull Suite")
+switchColor = true
+candleCol = false
+visualSwitch = input.bool(true, title="Show as a Band?", group = "Hull Suite")
+thicknessSwitch = input.int(1, title="Line Thickness", group = "Hull Suite")
+transpSwitch = input.int(40, title="Band Transparency", step=5, group = "Hull Suite")
+hullMovingAverage(_src, _length) => ta.wma(2 * ta.wma(_src, _length / 2) - ta.wma(_src, _length), math.round(math.sqrt(_length)))
+expHullMovingAverage(_src, _length) => ta.ema(2 * ta.ema(_src, _length / 2) - ta.ema(_src, _length), math.round(math.sqrt(_length)))
+triHullMovingAverage(_src, _length) => ta.wma(ta.wma(_src, _length / 3) * 3 - ta.wma(_src, _length / 2) - ta.wma(_src, _length), _length)
+modeSelection(mode, _src, _len) =>
+    if mode == "Hma"
+        hullMovingAverage(_src, _len)
+    else if mode == "Ehma"
+        expHullMovingAverage(_src, _len)
+    else if mode == "Thma"
+        triHullMovingAverage(_src, _len / 2)
+    else
+        na
+
+_hull = modeSelection(modeSwitch, src, int(length * lengthMult))
+HULL = useHtf ? request.security(syminfo.tickerid, htf, _hull) : _hull
+MHULL = HULL[0]
+SHULL = HULL[2]
+hullColor = switchColor ? (HULL > HULL[2] ? color.rgb(76, 175, 79, 31) : color.rgb(255, 82, 82, 31)) : color.orange
+
+//Plot Hull Suite
+Fi1 = plot(PlotHullSuite ? MHULL : na, title="MHULL", color=hullColor, linewidth=thicknessSwitch)
+Fi2 = plot(PlotHullSuite ? (visualSwitch ? SHULL : na) : na, title="SHULL", color=hullColor, linewidth=thicknessSwitch)
+alertcondition(ta.crossover(MHULL, SHULL), title="Hull trending up.", message="Hull trending up.")
+alertcondition(ta.crossover(SHULL, MHULL), title="Hull trending down.", message="Hull trending down.")
+fill(Fi1, Fi2, title="Band Filler", color=hullColor)
+barcolor(color = candleCol ? (switchColor ? hullColor : na) : na)
+
+
+
+
+
+
+
+IN1 = false
+if (UseEMA1to10 ? EMACrossUp1 : true) and timeframe.period == "1"
+    label.new(bar_index, high, "Long", color = color.blue, size = size.small)
+    alert("1 Long", alert.freq_once_per_bar)
+    IN1 := true
+
+else if (UseEMA1to10 ? EMACrossDown1 : true) and timeframe.period == "1"
+    label.new(bar_index, high, "Short", color = color.red, size = size.small)
+    alert("1 Short", alert.freq_once_per_bar)
+    IN1 := true
+
+// //Sell
+// plotshape(IN1[1], title = "SELL", style = shape.triangleup, location = location.belowbar, text = "SELL", size = size.small, color = color.black)
+
+
+IN3 = false
+if (UseEMA1to10 ? EMACrossUp3 : true) and (UseRSI ? To3RSILong : true) and Min3StochLong and timeframe.period == "3"
+    label.new(bar_index, high, "Long", color = color.blue, size = size.small)
+    alert("1 Long", alert.freq_once_per_bar)
+    IN3 := true
+
+else if (UseEMA1to10 ? EMACrossDown3 : true) and (UseRSI ? To3RSIShort : true) and Min3StochShort and timeframe.period == "3"
+    label.new(bar_index, high, "Short", color = color.red, size = size.small)
+    alert("1 Short", alert.freq_once_per_bar)
+    IN3 := true
+
+// //Sell
+// plotshape(IN3[1], title = "SELL", style = shape.triangleup, location = location.belowbar, text = "SELL", size = size.small, color = color.black)
+
+//  and (UseMACD ? macdLong : true) and (UseMACD ? macdShort : true)
+
+
+IN9 = false
+if (UseEMA1to10 ? EMACrossUp9 : true) and (UseRSI ? To13RSILong : true) and Min9StochLong and timeframe.period == "9"
+    label.new(bar_index, high, "Long", color = color.blue, size = size.small)
+    alert("1 Long", alert.freq_once_per_bar)
+    IN9 := true
+
+else if (UseEMA1to10 ? EMACrossDown9 : true) and (UseRSI ? To13RSIShort : true) and Min9StochShort and timeframe.period == "9"
+    label.new(bar_index, high, "Short", color = color.red, size = size.small)
+    alert("1 Short", alert.freq_once_per_bar)
+    IN9 := true
+
+// //Sell
+// plotshape(IN9[1], title = "SELL", style = shape.triangleup, location = location.belowbar, text = "SELL", size = size.small, color = color.black)
+
+
+//  and AboveHour and BelowHour
+
+
+
+
+
+
+
+
+
+
+
+
+
+//plotting
+PlottingEMA1 = ta.ema(close, EMA1Length)
+PlottingEMA2 = ta.ema(close, EMA2Length)
+PlottingEMA3 = ta.ema(close, EMA3Length)
+PlottingEMA4 = ta.ema(close, EMA4Length)
+PlottingEMA5 = ta.ema(close, EMA5Length)
+PlottingEMA6 = ta.ema(close, EMA6Length)
+PlottingSMA6 = ta.sma(close, EMA6Length)
+PlottingEMA7 = ta.ema(close, EMA7Length)
+PlottingEMA8 = ta.ema(close, EMA8Length)
+PlottingEMA9 = ta.ema(close, EMA9Length)
+PlottingEMA10 = ta.ema(close, EMA10Length)
+
+plot30 = input.bool(false, title = "Plot 30 EMA", group = "plotting")
+
+plot(PlotEMA1to10 ? PlottingEMA1 : na, color = color.rgb(128,128,128), title = "Time Frame 1 Only")
+plot(PlotEMA1to10 ? PlottingEMA2 : na, color = color.rgb(128,25,34))
+plot(PlotEMA1to10 ? PlottingEMA3 : na, color = color.rgb(244,143,177))
+plot(PlotEMA1to10 ? PlottingEMA4 : na, color = color.rgb(244,152,1))
+plot(PlotEMA1to10 ? PlottingEMA5 : na, color = color.rgb(53,98,255))
+plot(PlotEMA1to10 ? PlottingEMA6 : na, color = color.rgb(76,175,80), linewidth = 2)
+plot(PlotEMA1to10 ? PlottingSMA6 : na, color = color.rgb(0, 0, 0), linewidth = 2)
+plot(PlotEMA1to10 ? (plot30 ? PlottingEMA7 : na) : na, color = color.red, linewidth = 3)
+plot(PlotEMA1to10 ? PlottingEMA8 : na, color = color.rgb(126,87,194), linewidth = 3)
+plot(PlotEMA1to10 ? PlottingEMA9 : na, color = color.rgb(33,102,85), linewidth = 4)
+plot(PlotEMA1to10 ? PlottingEMA10 : na, color = color.rgb(230,81,0), linewidth = 4)
+
+
+//Mark H and D
+// Get the open price of the current 1H and 1D bars
+open1H = request.security(syminfo.tickerid, "60", open)
+close1H = request.security(syminfo.tickerid, "60", close)
+open1D = request.security(syminfo.tickerid, "D", open)
+close1D = request.security(syminfo.tickerid, "D", close)
+
+Mark1HColor = input.color(defval = color.blue, title = "Time Mark 1H Color", group = "Time Mark")
+Mark1DColor = input.color(defval = color.rgb(128, 13, 13), title = "Time Mark 1D Color", group = "Time Mark")
+Mark1HWidth = input.int(defval = 3, title = "Time Mark 1H Width", group = "Time Mark")
+Mark1DWidth = input.int(defval = 3, title = "Time Mark 1D Width", group = "Time Mark")
+
+// Plot horizontal lines at the open prices of the current 1H and 1D bars
+line1H = line.new(x1=bar_index[1], y1=open1H, x2=bar_index, y2=open1H, color=Mark1HColor, width=Mark1HWidth)
+line1D = line.new(x1=bar_index[1], y1=open1D, x2=bar_index, y2=open1D, color=Mark1DColor, width=Mark1DWidth)
+
+if (bar_index > 1)
+    line.delete(line1H[1])
+    line.delete(line1D[1])
