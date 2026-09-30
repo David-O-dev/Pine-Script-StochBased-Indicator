@@ -1,13 +1,19 @@
 # Pine-Script-StochBased-Indicator
 Indicator based on multi-timeframe EMA ribbons (1m, 3m, 9m), multi-timeframe RSI, Stochastic Momentum Index (SMI), Ichimoku Kinko Hyo, Hull Suite, and higher-timeframe session anchors with a modular "Use" toggle architecture. Signals entry for long/short across 1m, 3m, and 9m chart resolutions on TradingView.
+
 --
+
 ## Chart Preview
 ![Indicator Preview](1-3-StochBased-ss.png)
+
 --
+
 ## Motivation & Problem
 - **False Breakouts in Low-Volume Chop**: Momentum crossovers from moving averages and RSI alone can trigger premature entries in tight ranges or false expansion phases without an oscillator confirming internal price position within the range.
 - **The Core Goal**: To enhance the 1/3/9 multi-timeframe system by integrating a smoothed Stochastic Momentum Index (SMI) filter (+25 / -25 threshold bounds) alongside multi-timeframe EMA ribbons and RSI, filtering out low-conviction chop while retaining modular boolean switches.
+
 --
+
 ## Strategy Logic & Architecture
 - This indicator avoids false signals and wrong interpretation of the trend by utilizing a **rule-based, multi-factor filtering system**:
 ### Core Components:
@@ -38,7 +44,9 @@ Indicator based on multi-timeframe EMA ribbons (1m, 3m, 9m), multi-timeframe RSI
     - **Bearish Signal**: Triggers on 9m chart when 9m EMA crossover down occurs (if enabled) and 9m RSI is below 45 (if enabled) and 9m smoothed SMI is below -25.
 5. **Dynamic 1H & 1D Benchmark Anchors**:
   - Continuously projects real-time horizontal lines for 1-Hour ('open1H') and 1-Day ('open1D') opening prices with automatic previous-bar deletion ('line.delete(line1H[1])') to deliver clean, un-lagged session pivot references.
+
 --
+
 ## Configurable Parameters
 Users can adjust the following parameters inside TradingView's settings panel:
 - **Time Frame Inputs**: Default - 1m, 2m, 3m, 9m. Configurable intervals for multi-timeframe calculations.
@@ -48,14 +56,18 @@ Users can adjust the following parameters inside TradingView's settings panel:
 - **Ichimoku Kinko Hyo**: Default - Conversion Line 9, Base Line 26, Leading Span B 52, Displacement 26. Toggles for visual plotting ('PlotIchimoku') and directional slope filtering ('UseIchimoku').
 - **Hull Suite**: Default - HMA length 55, 240m HTF. Customizable modes (HMA, EHMA, THMA), band transparency, and line thickness.
 - **Time Mark (1H & 1D Anchors)**: Customizable line colors and widths for real-time 1-hour and 1-day opening price horizontal levels.
+
 --
+
 ## How to Install & Use in TradingView
 1. Open any crypto chart (e.g., `BTC/USDT`) on **[TradingView](https://www.tradingview.com/)**.
 2. Open the **`Pine Editor`** console at the bottom of the page.
 3. Open `1-3-9-StochBased.txt` (or your Pine Script file), copy the source code, and paste it into the editor.
 4. Click **`Save`** and then click **`Add to Chart`**.
 5. Switch chart timeframes to **`1m`**, **`3m`**, or **`9m`** and click the gear icon (`Settings`) on the indicator to adjust parameters as needed.
+
 --
+
 ## Key Learnings & Engineering Reflections
 1. **SMI Threshold Filtering for Momentum Quality (+25 / -25)**
   - I learned that combining the Stochastic Momentum Index (SMI) with moving average crossovers filters out low-velocity whipsaws. Requiring SMI to exceed +25 (or drop below -25) ensures price is not only crossing an EMA but is also printing high relative close-to-range velocity.
